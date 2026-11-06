@@ -1,0 +1,6 @@
+{
+  "name": "Taller de Neuroimagen - Promoción 106",
+  "description": "Sistema de verificación de pagos, generación de pases con QR y acreditación para el Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
