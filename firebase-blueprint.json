@@ -1,0 +1,190 @@
+{
+  "entities": {
+    "Participant": {
+      "title": "Participant",
+      "description": "Un participante registrado en el Taller de Neuroimagen a través de Google Forms.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único inmutable basado en el responseId de Google Forms.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "responseId": {
+          "type": "string",
+          "description": "ID original de la respuesta en Google Forms.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Nombre y apellido completo del participante.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Correo electrónico del participante.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "phone": {
+          "type": "string",
+          "description": "Teléfono o WhatsApp del participante.",
+          "maxLength": 60
+        },
+        "cedula": {
+          "type": "string",
+          "description": "Cédula o documento de identidad si se solicita en el formulario.",
+          "maxLength": 60
+        },
+        "registeredAt": {
+          "type": "string",
+          "description": "Fecha y hora del registro en el formulario.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["pending", "verified", "rejected"],
+          "description": "Estado de verificación manual del pago."
+        },
+        "paymentReference": {
+          "type": "string",
+          "description": "Número de comprobante de pago ingresado por el participante en el Google Form.",
+          "maxLength": 150
+        },
+        "paymentProofFileId": {
+          "type": "string",
+          "description": "ID del archivo en Google Drive subido como comprobante de pago en el Google Form.",
+          "maxLength": 150
+        },
+        "paymentProofUrl": {
+          "type": "string",
+          "description": "Enlace externo si el comprobante fue pegado como URL.",
+          "maxLength": 500
+        },
+        "rawAnswersJson": {
+          "type": "string",
+          "description": "Resumen serializado de todas las preguntas y respuestas del formulario para consulta completa.",
+          "maxLength": 5000
+        },
+        "verifiedAt": {
+          "type": "string",
+          "description": "Fecha y hora en que se verificó el pago.",
+          "maxLength": 80
+        },
+        "verifiedBy": {
+          "type": "string",
+          "description": "Correo del organizador que verificó el pago.",
+          "maxLength": 200
+        },
+        "ticketSentAt": {
+          "type": "string",
+          "description": "Fecha y hora en que se envió el correo de confirmación con el pase QR.",
+          "maxLength": 80
+        },
+        "generatedSlideId": {
+          "type": "string",
+          "description": "ID del archivo de presentación Google Slides generado en Google Drive para este participante.",
+          "maxLength": 150
+        },
+        "isCheckedIn": {
+          "type": "boolean",
+          "description": "Indica si el participante ya ingresó al evento escaneando su QR."
+        },
+        "checkedInAt": {
+          "type": "string",
+          "description": "Fecha y hora en que se confirmó el acceso en la puerta del evento.",
+          "maxLength": 80
+        },
+        "checkedInBy": {
+          "type": "string",
+          "description": "Correo del miembro del comité que escaneó y confirmó el acceso.",
+          "maxLength": 200
+        },
+        "ownerEmail": {
+          "type": "string",
+          "description": "Correo del administrador propietario del registro.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp del servidor de creación."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp del servidor de última actualización."
+        }
+      },
+      "required": [
+        "id",
+        "responseId",
+        "fullName",
+        "email",
+        "phone",
+        "cedula",
+        "registeredAt",
+        "paymentStatus",
+        "paymentReference",
+        "paymentProofFileId",
+        "paymentProofUrl",
+        "rawAnswersJson",
+        "verifiedAt",
+        "verifiedBy",
+        "ticketSentAt",
+        "generatedSlideId",
+        "isCheckedIn",
+        "checkedInAt",
+        "checkedInBy",
+        "ownerEmail",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Miembro autorizado del comité organizador de la Promoción 106.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "addedBy": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "addedBy", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/participants/{participantId}": {
+      "schema": { "$ref": "#/entities/Participant" },
+      "description": "Colección principal de participantes sincronizados del Google Form, estado de pago y acreditación QR."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Colección de miembros del comité autorizados para verificar pagos y escanear códigos QR."
+    }
+  }
+}

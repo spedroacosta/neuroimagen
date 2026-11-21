@@ -1,25 +1,28 @@
 export type PaymentStatus = 'pending' | 'verified' | 'rejected';
-export type TicketTier = 'General' | 'VIP' | 'Speaker' | 'Staff' | 'Estudiante' | 'Sponsor';
 
 export interface Participant {
   id: string;
+  responseId: string;
   fullName: string;
   email: string;
   phone: string;
-  tier: TicketTier;
+  cedula: string;
   registeredAt: string;
   paymentStatus: PaymentStatus;
-  paymentAmount: number;
-  paymentProofUrl?: string;
-  paymentReference?: string;
-  verifiedAt?: string;
-  verifiedBy?: string;
-  ticketSentAt?: string;
-  qrCodeUrl?: string;
+  paymentReference: string;
+  paymentProofFileId: string;
+  paymentProofUrl: string;
+  rawAnswersJson: string;
+  verifiedAt: string;
+  verifiedBy: string;
+  ticketSentAt: string;
+  generatedSlideId: string;
   isCheckedIn: boolean;
-  checkedInAt?: string;
-  checkedInBy?: string;
-  notes?: string;
+  checkedInAt: string;
+  checkedInBy: string;
+  ownerEmail: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
 export interface EventConfig {
@@ -33,7 +36,6 @@ export interface EventConfig {
   organizerName: string;
   customEmailSubject: string;
   customEmailBody: string;
-  bgGradient: string;
 }
 
 export interface Stats {
@@ -43,5 +45,4 @@ export interface Stats {
   ticketsSent: number;
   checkedIn: number;
   checkInPercentage: number;
-  totalRevenue: number;
 }

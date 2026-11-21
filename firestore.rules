@@ -1,0 +1,199 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isPrimaryAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'pedroacosta182002@gmail.com' ||
+        request.auth.token.email == 'promo106udoanz@gmail.com'
+      );
+    }
+
+    function isAdmin() {
+      return isPrimaryAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // 3. Entity Validation Helpers
+    function isValidParticipant(data) {
+      return data.keys().hasAll([
+        'id',
+        'responseId',
+        'fullName',
+        'email',
+        'phone',
+        'cedula',
+        'registeredAt',
+        'paymentStatus',
+        'paymentReference',
+        'paymentProofFileId',
+        'paymentProofUrl',
+        'rawAnswersJson',
+        'verifiedAt',
+        'verifiedBy',
+        'ticketSentAt',
+        'generatedSlideId',
+        'isCheckedIn',
+        'checkedInAt',
+        'checkedInBy',
+        'ownerEmail',
+        'createdAt',
+        'updatedAt'
+      ]) && data.keys().hasOnly([
+        'id',
+        'responseId',
+        'fullName',
+        'email',
+        'phone',
+        'cedula',
+        'registeredAt',
+        'paymentStatus',
+        'paymentReference',
+        'paymentProofFileId',
+        'paymentProofUrl',
+        'rawAnswersJson',
+        'verifiedAt',
+        'verifiedBy',
+        'ticketSentAt',
+        'generatedSlideId',
+        'isCheckedIn',
+        'checkedInAt',
+        'checkedInBy',
+        'ownerEmail',
+        'createdAt',
+        'updatedAt'
+      ])
+      && isValidId(data.id)
+      && data.responseId is string && data.responseId.size() >= 1 && data.responseId.size() <= 128
+      && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 200
+      && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+      && data.phone is string && data.phone.size() <= 60
+      && data.cedula is string && data.cedula.size() <= 60
+      && data.registeredAt is string && data.registeredAt.size() >= 1 && data.registeredAt.size() <= 80
+      && data.paymentStatus is string && (data.paymentStatus == 'pending' || data.paymentStatus == 'verified' || data.paymentStatus == 'rejected')
+      && data.paymentReference is string && data.paymentReference.size() <= 150
+      && data.paymentProofFileId is string && data.paymentProofFileId.size() <= 150
+      && data.paymentProofUrl is string && data.paymentProofUrl.size() <= 500
+      && data.rawAnswersJson is string && data.rawAnswersJson.size() <= 5000
+      && data.verifiedAt is string && data.verifiedAt.size() <= 80
+      && data.verifiedBy is string && data.verifiedBy.size() <= 200
+      && data.ticketSentAt is string && data.ticketSentAt.size() <= 80
+      && data.generatedSlideId is string && data.generatedSlideId.size() <= 150
+      && data.isCheckedIn is bool
+      && data.checkedInAt is string && data.checkedInAt.size() <= 80
+      && data.checkedInBy is string && data.checkedInBy.size() <= 200
+      && data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 200
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'addedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'addedBy', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.addedBy is string && data.addedBy.size() >= 3 && data.addedBy.size() <= 200
+        && data.createdAt is timestamp;
+    }
+
+    // 4. Collection Rules: /participants/{participantId}
+    match /participants/{participantId} {
+      allow get: if isSignedIn() && isValidId(participantId) && (
+        isPrimaryAdmin() || resource.data.ownerEmail == request.auth.token.email || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        request.auth.token.email == 'pedroacosta182002@gmail.com' ||
+        request.auth.token.email == 'promo106udoanz@gmail.com' ||
+        resource.data.ownerEmail == request.auth.token.email
+      );
+
+      allow create: if isSignedIn()
+        && isValidId(participantId)
+        && isValidParticipant(incoming())
+        && incoming().id == participantId
+        && incoming().ownerEmail == request.auth.token.email
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isValidId(participantId)
+        && isValidParticipant(incoming())
+        && incoming().id == existing().id
+        && incoming().responseId == existing().responseId
+        && incoming().ownerEmail == existing().ownerEmail
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (existing().ownerEmail == request.auth.token.email || isAdmin())
+        && (
+          // Action 1: Verify or Reject Payment & Send Ticket
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'paymentStatus',
+            'verifiedAt',
+            'verifiedBy',
+            'ticketSentAt',
+            'generatedSlideId',
+            'updatedAt'
+          ]) ||
+          // Action 2: QR Check-in or Undo Check-in at Event Entrance
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'isCheckedIn',
+            'checkedInAt',
+            'checkedInBy',
+            'updatedAt'
+          ]) ||
+          // Action 3: Resend Email / Regenerate Slide or Sync Form Data
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName',
+            'email',
+            'phone',
+            'cedula',
+            'paymentReference',
+            'paymentProofFileId',
+            'paymentProofUrl',
+            'rawAnswersJson',
+            'ticketSentAt',
+            'generatedSlideId',
+            'updatedAt'
+          ])
+        );
+
+      allow delete: if isSignedIn() && isValidId(participantId) && (
+        existing().ownerEmail == request.auth.token.email || isAdmin()
+      );
+    }
+
+    // 5. Collection Rules: /admins/{adminUid}
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isPrimaryAdmin());
+      allow list: if isPrimaryAdmin() && resource.data.addedBy == 'pedroacosta182002@gmail.com';
+      allow create: if isPrimaryAdmin()
+        && isValidId(adminUid)
+        && isValidAdminUser(incoming())
+        && incoming().uid == adminUid
+        && incoming().addedBy == request.auth.token.email
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isPrimaryAdmin() && isValidId(adminUid);
+    }
+  }
+}

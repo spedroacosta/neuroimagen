@@ -1,109 +1,80 @@
-import React, { useState } from 'react';
-import { BookOpen, Check, Copy, Code, ExternalLink, ShieldAlert } from 'lucide-react';
+import React from 'react';
+import { BookOpen, ExternalLink, CheckCircle2, Database, Presentation, Mail } from 'lucide-react';
 
 export const IntegrationGuide: React.FC = () => {
-  const [copiedScript, setCopiedScript] = useState(false);
-
-  const appsScriptCode = `/**
- * Google Apps Script para sincronizar automáticamente Google Forms con el Taller de Neuroimagen
- * Colócalo en el Editor de Apps Script de tu Google Form o Google Sheet enlazada.
- */
-function onFormSubmit(e) {
-  var itemResponses = e.response.getItemResponses();
-  var email = e.response.getRespondentEmail() || "";
-  var nombre = "";
-  
-  for (var i = 0; i < itemResponses.length; i++) {
-    var title = itemResponses[i].getItem().getTitle();
-    var response = itemResponses[i].getResponse();
-    if (title.toLowerCase().indexOf("nombre") !== -1) {
-      nombre = response;
-    }
-  }
-  
-  Logger.log("Nuevo inscripto en Taller de Neuroimagen: " + nombre + " (" + email + ")");
-}
-`;
-
-  const handleCopyScript = () => {
-    navigator.clipboard.writeText(appsScriptCode);
-    setCopiedScript(true);
-    setTimeout(() => setCopiedScript(false), 2000);
-  };
-
   return (
     <div className="space-y-6 bg-white">
-      
-      {/* Header */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-2">
+      <div className="bg-white p-6 rounded-xl border border-slate-200 space-y-2">
         <div className="flex items-center gap-3">
           <BookOpen className="h-5 w-5 text-sky-700" />
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Sincronización con Google Forms & Guía Técnica</h2>
+            <h2 className="text-lg font-bold text-slate-900">
+              Funcionamiento en Tiempo Real (Google Forms + Google Slides + Gmail + Firestore)
+            </h2>
             <p className="text-xs text-slate-600">
-              Instrucciones simples para conectar tu Google Form editable con este panel de control.
+              Resumen de cómo están conectados tus documentos oficiales con esta aplicación.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Form Link Card */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900">Formulario Configurado</h3>
-        <p className="text-xs text-slate-700">
-          Documento vinculado: <strong className="text-slate-900">Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos</strong>
-        </p>
-        <a
-          href="https://docs.google.com/forms/d/1nVkOvJnq8r4JGsOmVGwixvnt4hh4GLiqaKp4btEZqEc/edit"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-sky-700 hover:text-sky-900 underline font-semibold"
-        >
-          Abrir Google Form Editable <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      </div>
-
-      {/* Limitations Section */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <ShieldAlert className="h-4 w-4 text-amber-600" />
-          Límites de Envíos de Correo de Google
-        </h3>
-
-        <div className="space-y-2 text-xs text-slate-700">
-          <p>
-            • Cuentas personales <strong>@gmail.com</strong>: Límite de <strong>100 correos por día</strong> mediante la API de Gmail.
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-2.5">
+          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+            <Database className="h-4 w-4 text-sky-700" />
+            1. Google Forms + Firebase Firestore
+          </div>
+          <p className="text-slate-600 leading-relaxed">
+            Al hacer clic en <strong>Sincronizar Google Forms</strong>, la aplicación lee el esquema exacto de preguntas de tu formulario, extrae el <strong>Número de comprobante de pago</strong> y el archivo adjunto en Google Drive (<code>fileUploadAnswers</code>), y los guarda en <strong>Firebase Firestore</strong> para que todos los dispositivos vean exactamente la misma información en tiempo real.
           </p>
-          <p>
-            • Cuentas de dominio <strong>Google Workspace</strong> (@tuuniversidad.edu): Límite de <strong>2.000 correos por día</strong>.
-          </p>
-          <p className="text-slate-600 text-[11px] pt-1">
-            Si la cantidad de inscriptos del taller supera el límite diario de tu cuenta, los pases pueden enviarse por lotes o descargarse como imagen PNG para enviarlos directamente por WhatsApp.
-          </p>
-        </div>
-      </div>
-
-      {/* Apps Script Code */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Code className="h-4 w-4 text-sky-700" />
-            Script de Notificación Automática (Opcional)
-          </h3>
-          <button
-            onClick={handleCopyScript}
-            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded border border-slate-300 flex items-center gap-1"
+          <a
+            href="https://docs.google.com/forms/d/1nVkOvJnq8r4JGsOmVGwixvnt4hh4GLiqaKp4btEZqEc/edit"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-sky-700 font-semibold underline"
           >
-            {copiedScript ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-            {copiedScript ? 'Copiado' : 'Copiar Script'}
-          </button>
+            Abrir Google Form Editable <ExternalLink className="h-3.5 w-3.5" />
+          </a>
         </div>
 
-        <pre className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs font-mono text-slate-800 overflow-x-auto">
-          {appsScriptCode}
-        </pre>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-2.5">
+          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+            <Presentation className="h-4 w-4 text-sky-700" />
+            2. Plantilla Editable de Google Slides
+          </div>
+          <p className="text-slate-600 leading-relaxed">
+            Cuando verificas un pago, el servidor hace una copia de tu presentación editable en Google Slides, reemplaza las etiquetas (como <code>{`{{NOMBRE}}`}</code>, <code>{`{{CEDULA}}`}</code>, <code>{`{{TICKET_ID}}`}</code>) y coloca la imagen del <strong>Código QR</strong> exactamente en el cuadro donde pusiste <code>{`{{QR}}`}</code>.
+          </p>
+          <a
+            href="https://docs.google.com/presentation/d/1mPZXn4DdJpc2VGzZSVoLT8CWd-h_ovpcqvL2RbGXmoY/edit?slide=id.p#slide=id.p"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-sky-700 font-semibold underline"
+          >
+            Abrir Plantilla de Google Slides <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-2.5">
+          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+            <Mail className="h-4 w-4 text-sky-700" />
+            3. Envío Automático por Gmail y Lector QR
+          </div>
+          <p className="text-slate-600 leading-relaxed">
+            La diapositiva personalizada se exporta en alta resolución (PNG y PDF) desde Google Slides y se envía en el acto por correo al participante mediante la API de Gmail. El <strong>5 de diciembre</strong>, al escanear el QR en la puerta, aparece la ventana emergente con el botón <strong>Confirmar Acceso</strong> sincronizado en la nube.
+          </p>
+        </div>
       </div>
 
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-2 text-xs text-slate-700">
+        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          Nota sobre límites de envío de Gmail:
+        </div>
+        <p className="text-slate-600">
+          Las cuentas personales <code>@gmail.com</code> permiten enviar hasta 100 correos diarios vía API (o 500 desde Gmail web), y las cuentas institucionales Google Workspace hasta 2.000 diarios. También dispones de configuración SMTP opcional dentro de cada pase si deseas usar un servidor externo.
+        </p>
+      </div>
     </div>
   );
 };

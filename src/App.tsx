@@ -4,10 +4,40 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { User } from 'firebase/auth';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  where,
+} from 'firebase/firestore';
 import { Participant, EventConfig, Stats } from './types';
 import { INITIAL_EVENT_CONFIG } from './utils/sampleData';
-import { googleSignIn } from './utils/googleAuth';
-import { fetchLiveFormResponses } from './utils/googleFormsApi';
+import {
+  db,
+  initAuth,
+  googleSignIn,
+  googleLogout,
+  ensureAccessToken,
+  forceRefreshAccessToken,
+  handleFirestoreError,
+  OperationType,
+} from './utils/googleAuth';
+import { fetchLiveFormResponses, InsufficientScopesError } from './utils/googleFormsApi';
+import {
+  generateQRCodeDataUrl,
+  buildParticipantQRPayload,
+  getSequentialTicketId,
+} from './utils/qr';
+import {
+  generateSlideTicketAndSendEmail,
+  deleteParticipantSlideFromGoogleSlides,
+} from './utils/emailService';
 import { Navbar } from './components/Navbar';
 import { DashboardStats } from './components/DashboardStats';
 import { PaymentVerificationList } from './components/PaymentVerificationList';
@@ -15,196 +45,441 @@ import { TicketTemplateDesigner } from './components/TicketTemplateDesigner';
 import { TicketModal } from './components/TicketModal';
 import { QRScannerView } from './components/QRScannerView';
 import { IntegrationGuide } from './components/IntegrationGuide';
-import { NewParticipantModal } from './components/NewParticipantModal';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'template' | 'scanner' | 'guide'>('dashboard');
-  
-  // Real participant data store
-  const [participants, setParticipants] = useState<Participant[]>(() => {
-    const saved = localStorage.getItem('neuroimagen_participants');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [hasWorkspaceToken, setHasWorkspaceToken] = useState<boolean>(false);
+  const [authReady, setAuthReady] = useState<boolean>(false);
 
-  const [config, setConfig] = useState<EventConfig>(() => {
-    const saved = localStorage.getItem('neuroimagen_config');
-    return saved ? JSON.parse(saved) : INITIAL_EVENT_CONFIG;
-  });
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [config, setConfig] = useState<EventConfig>(INITIAL_EVENT_CONFIG);
 
   const [selectedParticipantForTicket, setSelectedParticipantForTicket] = useState<Participant | null>(null);
-  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [latestGeneratedSlideImage, setLatestGeneratedSlideImage] = useState<string | null>(null);
 
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [processingParticipantId, setProcessingParticipantId] = useState<string | null>(null);
+  const [bannerNotice, setBannerNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // 1. Initialize Firebase Authentication Listener
   useEffect(() => {
-    localStorage.setItem('neuroimagen_participants', JSON.stringify(participants));
-  }, [participants]);
+    const unsubscribe = initAuth(
+      (loggedInUser, token) => {
+        setUser(loggedInUser);
+        setHasWorkspaceToken(Boolean(token));
+        setAuthReady(true);
+      },
+      () => {
+        setUser(null);
+        setHasWorkspaceToken(false);
+        setAuthReady(true);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
 
+  // 2. Real-time Firestore Subscription for /participants
   useEffect(() => {
-    localStorage.setItem('neuroimagen_config', JSON.stringify(config));
-  }, [config]);
+    if (!authReady || !user) {
+      setParticipants([]);
+      return;
+    }
 
-  // Stats calculations
+    const path = 'participants';
+    const isSharedOrganizer =
+      user.email === 'pedroacosta182002@gmail.com' ||
+      user.email === 'promo106udoanz@gmail.com';
+    const q = isSharedOrganizer
+      ? query(collection(db, path))
+      : query(collection(db, path), where('ownerEmail', '==', user.email || ''));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const docs: Participant[] = [];
+        snapshot.forEach((docSnap) => {
+          docs.push(docSnap.data() as Participant);
+        });
+        setParticipants(docs);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, path);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [authReady, user]);
+
+  // Stats calculation
   const pendingCount = participants.filter((p) => p.paymentStatus === 'pending').length;
   const verifiedCount = participants.filter((p) => p.paymentStatus === 'verified').length;
   const checkedInCount = participants.filter((p) => p.isCheckedIn).length;
-  const totalRevenue = participants
-    .filter((p) => p.paymentStatus === 'verified')
-    .reduce((sum, p) => sum + p.paymentAmount, 0);
 
   const stats: Stats = {
     totalRegistered: participants.length,
     pendingPayment: pendingCount,
     verifiedPayment: verifiedCount,
-    ticketsSent: participants.filter((p) => p.ticketSentAt).length,
+    ticketsSent: participants.filter((p) => Boolean(p.ticketSentAt)).length,
     checkedIn: checkedInCount,
     checkInPercentage: verifiedCount > 0 ? Math.round((checkedInCount / verifiedCount) * 100) : 0,
-    totalRevenue,
   };
 
-  // Google Forms API Live Sync
-  const handleSyncForms = async () => {
+  // Sign In with Google (grants Forms, Slides, Drive, Gmail tokens + Firebase Auth)
+  const handleLogin = async () => {
+    setBannerNotice(null);
     try {
-      const authRes = await googleSignIn();
-      if (authRes?.accessToken) {
-        const liveParticipants = await fetchLiveFormResponses(authRes.accessToken);
-        if (liveParticipants.length > 0) {
-          setParticipants((prev) => {
-            const existingIds = new Set(prev.map((p) => p.id));
-            const newOnly = liveParticipants.filter((p) => !existingIds.has(p.id));
-            return [...newOnly, ...prev];
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('Opening sheet import:', err);
-      setIsNewModalOpen(true);
+      const res = await googleSignIn();
+      setUser(res.user);
+      setHasWorkspaceToken(true);
+    } catch (err: any) {
+      setBannerNotice({
+        type: 'error',
+        text: err.message || 'No se pudo iniciar sesión con Google.',
+      });
     }
   };
 
-  const handleVerifyPayment = (participantId: string) => {
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          const updated: Participant = {
-            ...p,
-            paymentStatus: 'verified',
-            verifiedAt: new Date().toLocaleString('es-ES'),
-            verifiedBy: 'Comité Promoción 106',
-            ticketSentAt: new Date().toLocaleString('es-ES'),
-          };
-          setSelectedParticipantForTicket(updated);
-          return updated;
+  const handleLogout = async () => {
+    await googleLogout();
+    setUser(null);
+    setHasWorkspaceToken(false);
+  };
+
+  // Live Google Forms Synchronization -> Persist to Firestore
+  const handleSyncForms = async () => {
+    setIsSyncing(true);
+    setBannerNotice(null);
+    try {
+      let token = await ensureAccessToken();
+      setHasWorkspaceToken(true);
+      const ownerEmail = user?.email || 'pedroacosta182002@gmail.com';
+      let liveParticipants: Participant[];
+      try {
+        liveParticipants = await fetchLiveFormResponses(token, ownerEmail);
+      } catch (err) {
+        if (err instanceof InsufficientScopesError) {
+          token = await forceRefreshAccessToken();
+          liveParticipants = await fetchLiveFormResponses(token, ownerEmail);
+        } else {
+          throw err;
         }
-        return p;
-      })
-    );
+      }
+
+      const existingMap = new Map<string, Participant>();
+      participants.forEach((p) => existingMap.set(p.id, p));
+      const liveIds = new Set<string>(liveParticipants.map((p) => p.id));
+
+      let addedCount = 0;
+      let updatedCount = 0;
+      let deletedCount = 0;
+
+      for (const incoming of liveParticipants) {
+        const existing = existingMap.get(incoming.id);
+        const docRef = doc(db, 'participants', incoming.id);
+
+        if (!existing) {
+          try {
+            await setDoc(docRef, {
+              ...incoming,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+            addedCount++;
+          } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, `participants/${incoming.id}`);
+          }
+        } else {
+          // Update form fields if any answer or receipt changed while preserving verification & check-in status
+          if (
+            existing.fullName !== incoming.fullName ||
+            existing.email !== incoming.email ||
+            existing.phone !== incoming.phone ||
+            existing.cedula !== incoming.cedula ||
+            existing.paymentReference !== incoming.paymentReference ||
+            existing.paymentProofFileId !== incoming.paymentProofFileId ||
+            existing.paymentProofUrl !== incoming.paymentProofUrl ||
+            existing.rawAnswersJson !== incoming.rawAnswersJson
+          ) {
+            try {
+              await updateDoc(docRef, {
+                fullName: incoming.fullName,
+                email: incoming.email,
+                phone: incoming.phone,
+                cedula: incoming.cedula,
+                paymentReference: incoming.paymentReference,
+                paymentProofFileId: incoming.paymentProofFileId,
+                paymentProofUrl: incoming.paymentProofUrl,
+                rawAnswersJson: incoming.rawAnswersJson,
+                ticketSentAt: existing.ticketSentAt,
+                generatedSlideId: existing.generatedSlideId,
+                updatedAt: serverTimestamp(),
+              });
+              updatedCount++;
+            } catch (error) {
+              handleFirestoreError(error, OperationType.UPDATE, `participants/${incoming.id}`);
+            }
+          }
+        }
+      }
+
+      // Remove any participant from Firestore whose response was deleted in Google Forms
+      for (const existing of participants) {
+        if (!liveIds.has(existing.id)) {
+          try {
+            await deleteDoc(doc(db, 'participants', existing.id));
+            if (existing.generatedSlideId) {
+              await deleteParticipantSlideFromGoogleSlides(
+                existing.generatedSlideId,
+                config.googleSlidesUrl
+              );
+            }
+            deletedCount++;
+          } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, `participants/${existing.id}`);
+          }
+        }
+      }
+
+      setBannerNotice({
+        type: 'success',
+        text: `Sincronización completada con Google Forms: ${liveParticipants.length} respuestas activas (${addedCount} nuevas, ${updatedCount} actualizadas, ${deletedCount} eliminadas).`,
+      });
+    } catch (err: any) {
+      console.error('Error syncing Google Forms:', err);
+      setBannerNotice({
+        type: 'error',
+        text: err.message || 'Error al sincronizar respuestas del Google Form.',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleRejectPayment = (participantId: string) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === participantId ? { ...p, paymentStatus: 'rejected' } : p))
-    );
+  // Automatic Flow on "Verify Payment":
+  // 1. Copy Google Slides template & replace participant placeholders + QR code
+  // 2. Send email immediately via Gmail API (or SMTP)
+  // 3. Update Firestore paymentStatus = 'verified' and ticketSentAt
+  // 4. Open modal showing the generated Google Slide ticket
+  const handleVerifyAndSendAutomatic = async (participant: Participant) => {
+    setProcessingParticipantId(participant.id);
+    setBannerNotice(null);
+
+    try {
+      const sequentialId = getSequentialTicketId(participant, participants);
+      const payload = buildParticipantQRPayload(sequentialId, participant.email);
+      const qrDataUrl = await generateQRCodeDataUrl(payload);
+
+      const savedSmtp = localStorage.getItem('neuroimagen_smtp');
+      const smtpConfig = savedSmtp ? JSON.parse(savedSmtp) : null;
+      const activeSmtp =
+        smtpConfig && smtpConfig.user && smtpConfig.pass
+          ? { ...smtpConfig, host: smtpConfig.host || 'smtp.gmail.com' }
+          : null;
+
+      const result = await generateSlideTicketAndSendEmail(
+        participant,
+        config,
+        qrDataUrl,
+        sequentialId,
+        true,
+        activeSmtp
+      );
+
+      const nowStr = new Date().toLocaleString('es-ES').substring(0, 80);
+      const verifierEmail = (user?.email || 'pedroacosta182002@gmail.com').substring(0, 200);
+      const slideId = (result.generatedSlideId || `pase_${sequentialId}`).substring(0, 150);
+
+      const docRef = doc(db, 'participants', participant.id);
+      try {
+        await updateDoc(docRef, {
+          paymentStatus: 'verified',
+          verifiedAt: nowStr,
+          verifiedBy: verifierEmail,
+          ticketSentAt: result.emailSent ? nowStr : participant.ticketSentAt,
+          generatedSlideId: slideId,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `participants/${participant.id}`);
+      }
+
+      const updatedParticipant: Participant = {
+        ...participant,
+        paymentStatus: 'verified',
+        verifiedAt: nowStr,
+        verifiedBy: verifierEmail,
+        ticketSentAt: result.emailSent ? nowStr : participant.ticketSentAt,
+        generatedSlideId: slideId,
+      };
+
+      setLatestGeneratedSlideImage(result.slideImageBase64 || null);
+      setSelectedParticipantForTicket(updatedParticipant);
+
+      setBannerNotice({
+        type: 'success',
+        text: `Pago verificado (ID: ${sequentialId}), diapositiva creada en tu presentación de Google Slides y correo enviado automáticamente a ${participant.email}.`,
+      });
+    } catch (err: any) {
+      console.error('Verify & Send error:', err);
+      setBannerNotice({
+        type: 'error',
+        text: err.message || 'Ocurrió un error al generar la diapositiva o enviar el correo.',
+      });
+    } finally {
+      setProcessingParticipantId(null);
+    }
   };
 
-  const handleSendEmailConfirmed = (participantId: string) => {
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId ? { ...p, ticketSentAt: new Date().toLocaleString('es-ES') } : p
-      )
-    );
+  const handleRejectPayment = async (participantId: string) => {
+    const target = participants.find((p) => p.id === participantId);
+    if (!target) return;
+
+    const docRef = doc(db, 'participants', participantId);
+    try {
+      await updateDoc(docRef, {
+        paymentStatus: 'rejected',
+        verifiedAt: new Date().toLocaleString('es-ES').substring(0, 80),
+        verifiedBy: (user?.email || 'pedroacosta182002@gmail.com').substring(0, 200),
+        ticketSentAt: target.ticketSentAt,
+        generatedSlideId: target.generatedSlideId,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `participants/${participantId}`);
+    }
   };
 
-  const handleCheckInParticipant = (
+  // Revert a verified payment back to pending & delete its slide from Google Slides
+  const handleRevertVerifiedPayment = async (participant: Participant) => {
+    const docRef = doc(db, 'participants', participant.id);
+    try {
+      await updateDoc(docRef, {
+        paymentStatus: 'pending',
+        verifiedAt: '',
+        verifiedBy: '',
+        ticketSentAt: '',
+        generatedSlideId: '',
+        updatedAt: serverTimestamp(),
+      });
+      if (participant.generatedSlideId) {
+        await deleteParticipantSlideFromGoogleSlides(
+          participant.generatedSlideId,
+          config.googleSlidesUrl
+        );
+      }
+      setBannerNotice({
+        type: 'success',
+        text: `Se anuló el pago verificado de ${participant.fullName} y volvió al estado Pendiente.`,
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `participants/${participant.id}`);
+    }
+  };
+
+  // Delete a participant record completely from Firestore & delete its slide from Google Slides
+  const handleDeleteParticipant = async (participant: Participant) => {
+    const docRef = doc(db, 'participants', participant.id);
+    try {
+      await deleteDoc(docRef);
+      if (participant.generatedSlideId) {
+        await deleteParticipantSlideFromGoogleSlides(
+          participant.generatedSlideId,
+          config.googleSlidesUrl
+        );
+      }
+      setBannerNotice({
+        type: 'success',
+        text: `Se eliminó el registro de ${participant.fullName} de la base de datos.`,
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `participants/${participant.id}`);
+    }
+  };
+
+  const handleTicketGeneratedAndSent = async (
+    participantId: string,
+    generatedSlideId: string,
+    emailSent: boolean
+  ) => {
+    const target = participants.find((p) => p.id === participantId);
+    if (!target) return;
+
+    const nowStr = new Date().toLocaleString('es-ES').substring(0, 80);
+    const docRef = doc(db, 'participants', participantId);
+    try {
+      await updateDoc(docRef, {
+        paymentStatus: target.paymentStatus,
+        verifiedAt: target.verifiedAt,
+        verifiedBy: target.verifiedBy,
+        ticketSentAt: emailSent ? nowStr : target.ticketSentAt,
+        generatedSlideId: (generatedSlideId || target.generatedSlideId).substring(0, 150),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `participants/${participantId}`);
+    }
+  };
+
+  // Real-time QR Check-in persisted to Firestore
+  const handleCheckInParticipant = async (
     participantId: string
-  ): {
+  ): Promise<{
     success: boolean;
     participant?: Participant;
     reason?: 'valid' | 'already_checked_in' | 'unpaid' | 'not_found';
-  } => {
+  }> => {
     const found = participants.find((p) => p.id === participantId);
-
     if (!found) {
       return { success: false, reason: 'not_found' };
     }
-
     if (found.paymentStatus !== 'verified') {
       return { success: false, participant: found, reason: 'unpaid' };
     }
-
     if (found.isCheckedIn) {
       return { success: false, participant: found, reason: 'already_checked_in' };
     }
 
-    const nowStr = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    let updatedParticipant: Participant | undefined;
+    const nowStr = new Date()
+      .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      .substring(0, 80);
+    const scannerEmail = (user?.email || 'Control de Acceso').substring(0, 200);
 
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updatedParticipant = {
-            ...p,
-            isCheckedIn: true,
-            checkedInAt: nowStr,
-            checkedInBy: 'Lector Control de Acceso',
-          };
-          return updatedParticipant;
-        }
-        return p;
-      })
-    );
+    const docRef = doc(db, 'participants', participantId);
+    try {
+      await updateDoc(docRef, {
+        isCheckedIn: true,
+        checkedInAt: nowStr,
+        checkedInBy: scannerEmail,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `participants/${participantId}`);
+    }
 
-    return { success: true, participant: updatedParticipant || found, reason: 'valid' };
-  };
-
-  const handleUndoCheckIn = (participantId: string) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === participantId ? { ...p, isCheckedIn: false, checkedInAt: undefined } : p))
-    );
-  };
-
-  const handleAddParticipant = (
-    newP: Omit<Participant, 'id' | 'registeredAt' | 'paymentStatus' | 'isCheckedIn'>
-  ) => {
-    const randomId = `NEURO-${Math.floor(1000 + Math.random() * 9000)}`;
-    const created: Participant = {
-      ...newP,
-      id: randomId,
-      registeredAt: new Date().toLocaleString('es-ES'),
-      paymentStatus: 'pending',
-      isCheckedIn: false,
+    return {
+      success: true,
+      participant: {
+        ...found,
+        isCheckedIn: true,
+        checkedInAt: nowStr,
+        checkedInBy: scannerEmail,
+      },
+      reason: 'valid',
     };
-    setParticipants((prev) => [created, ...prev]);
   };
 
-  const handleImportBatch = (rawCsv: string) => {
-    const lines = rawCsv.split('\n').filter((l) => l.trim().length > 0);
-    const newItems: Participant[] = [];
-
-    lines.forEach((line) => {
-      const parts = line.split(',').map((s) => s.trim());
-      if (parts.length >= 2) {
-        const fullName = parts[0];
-        const email = parts[1];
-        const phone = parts[2] || '';
-        const tier = (parts[3] as any) || 'General';
-        const amount = parseFloat(parts[4]) || 0;
-
-        newItems.push({
-          id: `NEURO-${Math.floor(1000 + Math.random() * 9000)}`,
-          fullName,
-          email,
-          phone,
-          tier,
-          registeredAt: new Date().toLocaleString('es-ES'),
-          paymentStatus: 'pending',
-          paymentAmount: amount,
-          paymentReference: `FORM-${Math.floor(Math.random() * 89999 + 10000)}`,
-          isCheckedIn: false,
-        });
-      }
-    });
-
-    if (newItems.length > 0) {
-      setParticipants((prev) => [...newItems, ...prev]);
+  const handleUndoCheckIn = async (participantId: string) => {
+    const docRef = doc(db, 'participants', participantId);
+    try {
+      await updateDoc(docRef, {
+        isCheckedIn: false,
+        checkedInAt: '',
+        checkedInBy: '',
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `participants/${participantId}`);
     }
   };
 
@@ -214,85 +489,137 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
-      
-      {/* Navbar */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         pendingCount={pendingCount}
-        onOpenNewModal={() => setIsNewModalOpen(true)}
         onSyncForms={handleSyncForms}
+        isSyncing={isSyncing}
+        user={user}
+        hasWorkspaceToken={hasWorkspaceToken}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
       />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white">
-        {activeTab === 'dashboard' && (
-          <DashboardStats
-            participants={participants}
-            stats={stats}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            onSyncForms={handleSyncForms}
-          />
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-white space-y-6">
+        {/* Global Status Notice */}
+        {bannerNotice && (
+          <div
+            className={`p-4 rounded-xl border text-xs font-semibold flex items-center justify-between gap-3 bg-white ${
+              bannerNotice.type === 'success'
+                ? 'border-emerald-300 text-emerald-900'
+                : 'border-rose-300 text-rose-900'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {bannerNotice.type === 'success' ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+              )}
+              <span>{bannerNotice.text}</span>
+            </div>
+            <button
+              onClick={() => setBannerNotice(null)}
+              className="text-slate-400 hover:text-slate-700 font-bold"
+            >
+              ✕
+            </button>
+          </div>
         )}
 
-        {activeTab === 'verification' && (
-          <PaymentVerificationList
-            participants={participants}
-            onVerifyPayment={handleVerifyPayment}
-            onRejectPayment={handleRejectPayment}
-            onSelectParticipantForTicket={(p) => setSelectedParticipantForTicket(p)}
-          />
-        )}
+        {/* Require Google Sign-in if not authenticated */}
+        {authReady && !user ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-4 max-w-xl mx-auto my-8">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900">
+              Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos
+            </h2>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Inicia sesión con tu cuenta de Google para acceder a la base de datos en tiempo real, sincronizar las respuestas y comprobantes de tu Google Form, editar automáticamente la plantilla de Google Slides y enviar los pases con QR por Gmail.
+            </p>
+            <button
+              onClick={handleLogin}
+              className="inline-flex items-center gap-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs px-5 py-3 rounded-xl border border-slate-300 shadow-xs transition-all"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+              </svg>
+              <span>Iniciar sesión con Google</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'dashboard' && (
+              <DashboardStats
+                participants={participants}
+                stats={stats}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onSyncForms={handleSyncForms}
+                isSyncing={isSyncing}
+              />
+            )}
 
-        {activeTab === 'template' && (
-          <TicketTemplateDesigner
-            config={config}
-            onUpdateConfig={handleUpdateConfig}
-          />
-        )}
+            {activeTab === 'verification' && (
+              <PaymentVerificationList
+                participants={participants}
+                processingParticipantId={processingParticipantId}
+                onRequestVerifyAndSend={handleVerifyAndSendAutomatic}
+                onRejectPayment={handleRejectPayment}
+                onRevertVerifiedPayment={handleRevertVerifiedPayment}
+                onDeleteParticipant={handleDeleteParticipant}
+                onSelectParticipantForTicket={(p) => {
+                  setLatestGeneratedSlideImage(null);
+                  setSelectedParticipantForTicket(p);
+                }}
+              />
+            )}
 
-        {activeTab === 'scanner' && (
-          <QRScannerView
-            participants={participants}
-            onCheckInParticipant={handleCheckInParticipant}
-            onUndoCheckIn={handleUndoCheckIn}
-          />
-        )}
+            {activeTab === 'template' && (
+              <TicketTemplateDesigner
+                config={config}
+                participants={participants}
+                onUpdateConfig={handleUpdateConfig}
+              />
+            )}
 
-        {activeTab === 'guide' && <IntegrationGuide />}
+            {activeTab === 'scanner' && (
+              <QRScannerView
+                participants={participants}
+                onCheckInParticipant={handleCheckInParticipant}
+                onUndoCheckIn={handleUndoCheckIn}
+              />
+            )}
+
+            {activeTab === 'guide' && <IntegrationGuide />}
+          </>
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-600">
+      <footer className="border-t border-slate-200 bg-white py-5 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            <strong>Taller de Neuroimagen, el arte de diagnosticar a tiempo</strong> — Promoción 106 de Médicos Cirujanos
+            <strong>Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos</strong>
           </div>
-          <div>
-            Fecha: 5 de Diciembre, 2026
-          </div>
+          <div>5 de diciembre</div>
         </div>
       </footer>
 
-      {/* Ticket Preview Modal */}
       {selectedParticipantForTicket && (
         <TicketModal
           participant={selectedParticipantForTicket}
+          allParticipants={participants}
           config={config}
-          onClose={() => setSelectedParticipantForTicket(null)}
-          onSendEmailConfirmed={handleSendEmailConfirmed}
+          initialSlideImageBase64={latestGeneratedSlideImage}
+          onClose={() => {
+            setSelectedParticipantForTicket(null);
+            setLatestGeneratedSlideImage(null);
+          }}
+          onTicketGeneratedAndSent={handleTicketGeneratedAndSent}
         />
       )}
-
-      {/* New Participant / Import Modal */}
-      {isNewModalOpen && (
-        <NewParticipantModal
-          onClose={() => setIsNewModalOpen(false)}
-          onAddParticipant={handleAddParticipant}
-          onImportBatch={handleImportBatch}
-        />
-      )}
-
     </div>
   );
 }
