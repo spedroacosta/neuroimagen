@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-/* ------------------------------------------------------------------
-   Sistema de diseño · Taller de Neuroimagen
-   Paleta sobria (slate) con acento sky. Fuente Plus Jakarta Sans
-   (cargada en index.html) y JetBrains Mono para datos y códigos.
-------------------------------------------------------------------- */
+/* ==================================================================
+   Taller de Neuroimagen · Sistema visual "Liquid Glass"
+   Minimalismo tipo Apple: superficies translúcidas, bordes de luz,
+   profundidad suave y movimiento fluido.
+   ================================================================== */
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
@@ -15,7 +15,9 @@
   --color-brand-600: #0284c7;
   --color-brand-700: #0369a1;
   --color-brand-800: #075985;
-  --color-ink: #0f172a;
+  --color-ink: #0b1220;
+
+  --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -25,7 +27,14 @@
   }
 
   body {
-    @apply bg-slate-50 font-sans text-slate-900 antialiased;
+    @apply font-sans text-slate-900 antialiased;
+    min-height: 100vh;
+    background-color: #eef2f7;
+    background-image:
+      radial-gradient(1000px circle at 0% -8%, rgba(14, 165, 233, 0.20), transparent 60%),
+      radial-gradient(900px circle at 100% 0%, rgba(99, 102, 241, 0.16), transparent 55%),
+      radial-gradient(900px circle at 60% 115%, rgba(16, 185, 129, 0.12), transparent 60%);
+    background-attachment: fixed;
   }
 
   ::selection {
@@ -40,24 +49,110 @@
 }
 
 @layer components {
+  /* Superficie de vidrio líquido: translúcida, con borde de luz y reflejo superior */
+  .glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.56));
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(15, 23, 42, 0.04),
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 22px 44px -22px rgba(15, 23, 42, 0.25);
+  }
+
   .card {
-    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    backdrop-filter: blur(24px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 1.5rem;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 16px 36px -22px rgba(15, 23, 42, 0.22);
+  }
+
+  .btn-primary,
+  .btn-brand,
+  .btn-light,
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: transform 0.2s var(--ease-fluid), background-color 0.2s, box-shadow 0.2s, color 0.2s;
+    cursor: pointer;
+    user-select: none;
+  }
+  .btn-primary:active,
+  .btn-brand:active,
+  .btn-light:active,
+  .btn-outline:active {
+    transform: scale(0.97);
+  }
+  .btn-primary:disabled,
+  .btn-brand:disabled,
+  .btn-light:disabled,
+  .btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 
   .btn-primary {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50;
+    color: #fff;
+    background: linear-gradient(180deg, #1e293b, #0b1220);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px -10px rgba(11, 18, 32, 0.6);
+  }
+  .btn-primary:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 12px 24px -12px rgba(11, 18, 32, 0.7);
   }
 
   .btn-brand {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50;
+    color: #fff;
+    background: linear-gradient(180deg, #0ea5e9, #0369a1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px -10px rgba(3, 105, 161, 0.7);
   }
-
-  .btn-outline {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+  .btn-brand:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 12px 24px -12px rgba(3, 105, 161, 0.8);
   }
 
   .btn-light {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50;
+    color: var(--color-ink);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: inset 0 1px 0 #fff, 0 8px 20px -12px rgba(0, 0, 0, 0.35);
+  }
+  .btn-light:hover {
+    background: #fff;
+  }
+
+  .btn-outline {
+    color: #1e293b;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(15, 23, 42, 0.06), 0 6px 14px -10px rgba(15, 23, 42, 0.3);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+  .btn-outline:hover {
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  /* Blobs de color que flotan detrás de las cabeceras y el acceso */
+  .blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+    opacity: 0.55;
+    pointer-events: none;
+    animation: drift 16s var(--ease-fluid) infinite alternate;
   }
 }
 
@@ -67,5 +162,45 @@
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(-24px, 10px, 0) scale(1);
+  }
+  to {
+    transform: translate3d(28px, -18px, 0) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Entrada suave para elementos que aparecen dinámicamente (avisos, resultados, listas) */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.enter {
+  animation: enter 0.5s var(--ease-fluid) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation: none;
   }
 }

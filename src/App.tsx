@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { User } from 'firebase/auth';
 import {
   collection,
@@ -488,126 +489,141 @@ export default function App() {
     setConfig((prev) => ({ ...prev, ...updated }));
   };
 
+  const FLUID = [0.22, 1, 0.36, 1] as const;
+
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        pendingCount={pendingCount}
-        onSyncForms={handleSyncForms}
-        isSyncing={isSyncing}
-        user={user}
-        hasWorkspaceToken={hasWorkspaceToken}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-      />
-
-      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Aviso global */}
-        {bannerNotice && (
-          <div
-            role="status"
-            className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
-              bannerNotice.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                : 'border-rose-200 bg-rose-50 text-rose-900'
-            }`}
-          >
-            <div className="flex items-start gap-2.5">
-              {bannerNotice.type === 'success' ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
-              ) : (
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
-              )}
-              <span className="leading-relaxed">{bannerNotice.text}</span>
-            </div>
-            <button
-              onClick={() => setBannerNotice(null)}
-              aria-label="Cerrar aviso"
-              className="rounded-md p-1 opacity-60 transition-opacity hover:opacity-100"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        {!authReady ? (
-          <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500">
-            <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-            <span>Cargando sesión…</span>
-          </div>
-        ) : !user ? (
-          <LoginScreen onLogin={handleLogin} />
-        ) : (
-          <>
-            {activeTab === 'dashboard' && (
-              <DashboardStats
-                participants={participants}
-                stats={stats}
-                onNavigateTab={(tab) => setActiveTab(tab)}
-                onSyncForms={handleSyncForms}
-                isSyncing={isSyncing}
-              />
-            )}
-
-            {activeTab === 'verification' && (
-              <PaymentVerificationList
-                participants={participants}
-                processingParticipantId={processingParticipantId}
-                onRequestVerifyAndSend={handleVerifyAndSendAutomatic}
-                onRejectPayment={handleRejectPayment}
-                onRevertVerifiedPayment={handleRevertVerifiedPayment}
-                onDeleteParticipant={handleDeleteParticipant}
-                onSelectParticipantForTicket={(p) => {
-                  setLatestGeneratedSlideImage(null);
-                  setSelectedParticipantForTicket(p);
-                }}
-              />
-            )}
-
-            {activeTab === 'template' && (
-              <TicketTemplateDesigner
-                config={config}
-                participants={participants}
-                onUpdateConfig={handleUpdateConfig}
-              />
-            )}
-
-            {activeTab === 'scanner' && (
-              <QRScannerView
-                participants={participants}
-                onCheckInParticipant={handleCheckInParticipant}
-                onUndoCheckIn={handleUndoCheckIn}
-              />
-            )}
-
-            {activeTab === 'guide' && <IntegrationGuide />}
-          </>
-        )}
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8">
-          <p className="font-semibold text-slate-700">
-            Taller de Neuroimagen · Promoción 106 de Médicos Cirujanos
-          </p>
-          <p>5 de diciembre</p>
-        </div>
-      </footer>
-
-      {selectedParticipantForTicket && (
-        <TicketModal
-          participant={selectedParticipantForTicket}
-          allParticipants={participants}
-          config={config}
-          initialSlideImageBase64={latestGeneratedSlideImage}
-          onClose={() => {
-            setSelectedParticipantForTicket(null);
-            setLatestGeneratedSlideImage(null);
-          }}
-          onTicketGeneratedAndSent={handleTicketGeneratedAndSent}
+    <MotionConfig reducedMotion="user">
+      <div className="flex min-h-screen flex-col font-sans text-slate-900">
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          pendingCount={pendingCount}
+          onSyncForms={handleSyncForms}
+          isSyncing={isSyncing}
+          user={user}
+          hasWorkspaceToken={hasWorkspaceToken}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
         />
-      )}
-    </div>
+
+        <main className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 pb-32 pt-6 sm:px-6 md:pb-12 lg:px-8">
+          {/* Aviso global */}
+          <AnimatePresence>
+            {bannerNotice && (
+              <motion.div
+                key="banner"
+                role="status"
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.3, ease: FLUID }}
+                className={`glass flex items-start justify-between gap-3 rounded-2xl px-4 py-3 text-sm ${
+                  bannerNotice.type === 'success' ? 'text-emerald-900' : 'text-rose-900'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  {bannerNotice.type === 'success' ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                  ) : (
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+                  )}
+                  <span className="leading-relaxed">{bannerNotice.text}</span>
+                </div>
+                <button
+                  onClick={() => setBannerNotice(null)}
+                  aria-label="Cerrar aviso"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full opacity-60 transition-opacity hover:bg-slate-900/5 hover:opacity-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!authReady ? (
+            <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500">
+              <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <span>Cargando sesión…</span>
+            </div>
+          ) : !user ? (
+            <LoginScreen onLogin={handleLogin} />
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
+                transition={{ duration: 0.32, ease: FLUID }}
+              >
+                {activeTab === 'dashboard' && (
+                  <DashboardStats
+                    participants={participants}
+                    stats={stats}
+                    onNavigateTab={(tab) => setActiveTab(tab)}
+                    onSyncForms={handleSyncForms}
+                    isSyncing={isSyncing}
+                  />
+                )}
+
+                {activeTab === 'verification' && (
+                  <PaymentVerificationList
+                    participants={participants}
+                    processingParticipantId={processingParticipantId}
+                    onRequestVerifyAndSend={handleVerifyAndSendAutomatic}
+                    onRejectPayment={handleRejectPayment}
+                    onRevertVerifiedPayment={handleRevertVerifiedPayment}
+                    onDeleteParticipant={handleDeleteParticipant}
+                    onSelectParticipantForTicket={(p) => {
+                      setLatestGeneratedSlideImage(null);
+                      setSelectedParticipantForTicket(p);
+                    }}
+                  />
+                )}
+
+                {activeTab === 'template' && (
+                  <TicketTemplateDesigner
+                    config={config}
+                    participants={participants}
+                    onUpdateConfig={handleUpdateConfig}
+                  />
+                )}
+
+                {activeTab === 'scanner' && (
+                  <QRScannerView
+                    participants={participants}
+                    onCheckInParticipant={handleCheckInParticipant}
+                    onUndoCheckIn={handleUndoCheckIn}
+                  />
+                )}
+
+                {activeTab === 'guide' && <IntegrationGuide />}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </main>
+
+        <footer className="mx-auto hidden w-full max-w-7xl px-4 pb-8 text-xs text-slate-500 sm:px-6 md:block lg:px-8">
+          <div className="flex items-center justify-between gap-2 border-t border-slate-900/5 pt-5">
+            <p className="font-medium text-slate-600">Taller de Neuroimagen · Promoción 106 de Médicos Cirujanos</p>
+            <p>5 de diciembre</p>
+          </div>
+        </footer>
+
+        {selectedParticipantForTicket && (
+          <TicketModal
+            participant={selectedParticipantForTicket}
+            allParticipants={participants}
+            config={config}
+            initialSlideImageBase64={latestGeneratedSlideImage}
+            onClose={() => {
+              setSelectedParticipantForTicket(null);
+              setLatestGeneratedSlideImage(null);
+            }}
+            onTicketGeneratedAndSent={handleTicketGeneratedAndSent}
+          />
+        )}
+      </div>
+    </MotionConfig>
   );
 }
