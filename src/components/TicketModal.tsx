@@ -17,6 +17,7 @@ import {
   Copy,
   Settings,
   AlertCircle,
+  X,
 } from 'lucide-react';
 
 interface TicketModalProps {
@@ -193,221 +194,186 @@ export const TicketModal: React.FC<TicketModalProps> = ({
     setTimeout(() => setCopiedToken(false), 2000);
   };
 
+  const payloadValue = buildParticipantQRPayload(sequentialId, participant.email);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl max-w-4xl w-full my-auto shadow-xl overflow-hidden relative flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-white text-sky-800 flex items-center justify-center border border-slate-200">
-              <QrCode className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Pase Generado en Google Slides — ID: {sequentialId}
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
+        {/* Cabecera */}
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+              <QrCode className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-bold text-slate-900 sm:text-base">
+                Pase generado · ID {sequentialId}
               </h3>
-              <p className="text-xs text-slate-600 font-mono">
-                ID: {sequentialId} • {participant.fullName} ({participant.email})
+              <p className="truncate text-xs text-slate-600">
+                {participant.fullName} · {participant.email}
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="Cerrar"
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
-        </div>
+        </header>
 
-        {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 bg-white">
-          {/* Real Google Slides Exported Image Display */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-700">
-              <span>
-                Diapositiva del participante (ID: <strong>{sequentialId}</strong>) en Google Slides
-              </span>
+        {/* Cuerpo */}
+        <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50 p-5 sm:p-6">
+          {/* Vista previa de la diapositiva */}
+          <section className="space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-slate-700">Diapositiva en Google Slides</p>
               <a
                 href={slideDirectUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sky-700 hover:underline flex items-center gap-1"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
               >
-                Ver esta diapositiva en tu documento de Google Slides{' '}
-                <ExternalLink className="h-3.5 w-3.5" />
+                Ver en Google Slides <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
 
-            <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-white min-h-[260px] flex items-center justify-center p-3">
+            <div className="flex min-h-[260px] items-center justify-center rounded-xl border border-slate-200 bg-white p-3">
               {isGeneratingSlide ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-3 text-xs text-slate-600">
-                  <RefreshCw className="h-7 w-7 animate-spin text-sky-700" />
+                <div className="flex flex-col items-center gap-3 py-16 text-center text-xs text-slate-600">
+                  <RefreshCw className="h-7 w-7 animate-spin text-brand-700" />
                   <p className="font-semibold text-slate-800">
-                    Creando diapositiva en Google Slides (ID: {sequentialId}), rellenando datos y
-                    colocando el código QR...
+                    Creando diapositiva (ID {sequentialId}), rellenando datos y colocando el QR…
                   </p>
                 </div>
               ) : slideImageBase64 ? (
                 <img
                   src={slideImageBase64}
                   alt={`Entrada ${sequentialId} - ${participant.fullName}`}
-                  className="w-full h-auto rounded-lg max-h-[420px] object-contain border border-slate-200"
+                  className="max-h-[420px] w-full rounded-lg border border-slate-200 object-contain"
                 />
               ) : (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  Haz clic en &quot;Reenviar Correo con Entrada&quot; para generar la diapositiva de
-                  este participante.
-                </div>
+                <p className="py-12 text-center text-xs text-slate-500">
+                  Pulsa «Reenviar correo con entrada» para generar la diapositiva de este participante.
+                </p>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Status Feedback Banner */}
           {emailStatus === 'sent' && statusMessage && (
-            <div className="p-3.5 bg-white border border-emerald-300 rounded-xl text-emerald-800 text-xs flex items-center gap-2 font-semibold">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-800">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               <span>{statusMessage}</span>
             </div>
           )}
 
           {emailStatus === 'error' && statusMessage && (
-            <div className="p-3.5 bg-white border border-rose-300 rounded-xl text-rose-800 text-xs flex items-center gap-2 font-semibold">
-              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-800">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
               <span>{statusMessage}</span>
             </div>
           )}
 
-          {/* Details & QR Payload Box */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 text-xs text-slate-700">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-sky-700" />
-                  Datos del Pase y Envío por Gmail
+          {/* Datos y QR */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <Mail className="h-4 w-4 text-brand-700" /> Datos y envío
                 </h4>
                 <button
                   onClick={() => setShowSmtpSettings(!showSmtpSettings)}
-                  className="text-[11px] font-semibold text-sky-700 hover:underline flex items-center gap-1"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 hover:text-brand-800"
                 >
-                  <Settings className="h-3.5 w-3.5" /> SMTP Opcional
+                  <Settings className="h-3.5 w-3.5" /> SMTP
                 </button>
               </div>
-              <div className="space-y-1">
-                <div>
-                  <span className="text-slate-500">Participante:</span>{' '}
-                  <strong className="text-slate-900">{participant.fullName}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500">Correo:</span>{' '}
-                  <strong className="text-slate-900">{participant.email}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500">ID Secuencial:</span>{' '}
-                  <strong className="font-mono text-slate-900">{sequentialId}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500">Comprobante Nº:</span>{' '}
-                  <span className="font-mono">{participant.paymentReference || 'Verificado'}</span>
-                </div>
-              </div>
-            </div>
+              <dl className="space-y-2 text-xs">
+                {[
+                  { k: 'Participante', v: participant.fullName, bold: true },
+                  { k: 'Correo', v: participant.email },
+                  { k: 'ID de entrada', v: sequentialId, mono: true, bold: true },
+                  { k: 'Comprobante', v: participant.paymentReference || 'Verificado', mono: true },
+                ].map((row) => (
+                  <div key={row.k} className="flex justify-between gap-4 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                    <dt className="text-slate-500">{row.k}</dt>
+                    <dd className={`text-right text-slate-900 ${row.mono ? 'font-mono' : ''} ${row.bold ? 'font-semibold' : ''}`}>
+                      {row.v}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 text-xs text-slate-700">
-              <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                <QrCode className="h-4 w-4 text-sky-700" />
-                Código QR Único (ID: {sequentialId})
+            <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+              <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <QrCode className="h-4 w-4 text-brand-700" /> Código QR (ID {sequentialId})
               </h4>
-              <div className="flex items-center gap-2 pt-1">
+              <p className="text-xs text-slate-500">Contenido codificado en el QR del pase.</p>
+              <div className="flex items-stretch gap-2">
                 <input
                   type="text"
                   readOnly
-                  value={buildParticipantQRPayload(sequentialId, participant.email)}
-                  className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 font-mono text-[11px] text-slate-800 focus:outline-none"
+                  value={payloadValue}
+                  className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-[11px] text-slate-800 focus:outline-none"
                 />
                 <button
                   onClick={handleCopyPayload}
-                  className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-lg font-bold min-h-[36px] flex items-center gap-1"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   <Copy className="h-3.5 w-3.5" />
                   {copiedToken ? 'Copiado' : 'Copiar'}
                 </button>
               </div>
-            </div>
+            </section>
           </div>
 
-          {/* Optional SMTP Settings */}
           {showSmtpSettings && (
-            <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs space-y-3">
-              <h4 className="font-bold text-slate-900">
-                Configuración de Servidor SMTP Externo (Opcional — Por defecto se usa tu cuenta de
-                Gmail conectada)
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-700 font-semibold mb-1 block">
-                    Servidor SMTP (Host):
-                  </label>
-                  <input
-                    type="text"
-                    value={smtpConfig.host}
-                    onChange={(e) => setSmtpConfig({ ...smtpConfig, host: e.target.value })}
-                    placeholder="smtp.gmail.com (por defecto)"
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 font-semibold mb-1 block">Puerto:</label>
-                  <input
-                    type="number"
-                    value={smtpConfig.port}
-                    onChange={(e) =>
-                      setSmtpConfig({ ...smtpConfig, port: Number(e.target.value) })
-                    }
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 font-semibold mb-1 block">Usuario SMTP:</label>
-                  <input
-                    type="text"
-                    value={smtpConfig.user}
-                    onChange={(e) => setSmtpConfig({ ...smtpConfig, user: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 font-semibold mb-1 block">
-                    Contraseña de Aplicación:
-                  </label>
-                  <input
-                    type="password"
-                    value={smtpConfig.pass}
-                    onChange={(e) => setSmtpConfig({ ...smtpConfig, pass: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-900"
-                  />
-                </div>
+            <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Servidor SMTP externo (opcional)</h4>
+                <p className="text-xs text-slate-500">Si está vacío, se usa la cuenta de Gmail conectada.</p>
               </div>
-            </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { label: 'Servidor (host)', type: 'text', value: smtpConfig.host, placeholder: 'smtp.gmail.com', onChange: (v: string) => setSmtpConfig({ ...smtpConfig, host: v }) },
+                  { label: 'Puerto', type: 'number', value: String(smtpConfig.port), placeholder: '587', onChange: (v: string) => setSmtpConfig({ ...smtpConfig, port: Number(v) }) },
+                  { label: 'Usuario SMTP', type: 'text', value: smtpConfig.user, placeholder: '', onChange: (v: string) => setSmtpConfig({ ...smtpConfig, user: v }) },
+                  { label: 'Contraseña de aplicación', type: 'password', value: smtpConfig.pass, placeholder: '', onChange: (v: string) => setSmtpConfig({ ...smtpConfig, pass: v }) },
+                ].map((field) => (
+                  <label key={field.label} className="space-y-1.5">
+                    <span className="text-xs font-semibold text-slate-700">{field.label}</span>
+                    <input
+                      type={field.type}
+                      value={field.value}
+                      placeholder={field.placeholder}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                    />
+                  </label>
+                ))}
+              </div>
+            </section>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-slate-200 bg-white">
+        {/* Pie de acciones */}
+        <footer className="flex flex-col-reverse items-stretch justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center">
           <a
             href={slideDirectUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-sky-700 hover:underline font-semibold flex items-center gap-1"
+            className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800 sm:justify-start"
           >
-            Abrir Documento de Google Slides <ExternalLink className="h-3.5 w-3.5" />
+            Abrir documento en Google Slides <ExternalLink className="h-3.5 w-3.5" />
           </a>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             {slideImageBase64 && (
               <button
                 onClick={handleDownloadImage}
-                className="w-1/2 sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-lg border border-slate-300 transition-all min-h-[40px]"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
                 <Download className="h-4 w-4" />
                 Descargar PNG
@@ -417,20 +383,20 @@ export const TicketModal: React.FC<TicketModalProps> = ({
             <button
               onClick={handleSendOrResendEmail}
               disabled={emailStatus === 'sending' || isGeneratingSlide}
-              className="w-1/2 sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2.5 bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs rounded-lg transition-all min-h-[40px] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
             >
               {emailStatus === 'sending' ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Actualizando Slide y Enviando...
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Actualizando y enviando…
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4" /> Reenviar Correo con Entrada
+                  <Send className="h-4 w-4" /> Reenviar correo con entrada
                 </>
               )}
             </button>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );

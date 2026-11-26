@@ -1,6 +1,18 @@
 import React from 'react';
-import { Participant, Stats } from '../types';
-import { Users, Clock, CheckCircle2, QrCode, ExternalLink, Calendar, RefreshCw } from 'lucide-react';
+import { Participant, PaymentStatus, Stats } from '../types';
+import { INITIAL_EVENT_CONFIG } from '../utils/sampleData';
+import {
+  Users,
+  Clock,
+  CheckCircle2,
+  QrCode,
+  ExternalLink,
+  CalendarDays,
+  MapPin,
+  RefreshCw,
+  ArrowRight,
+  ClipboardCheck,
+} from 'lucide-react';
 
 interface DashboardStatsProps {
   participants: Participant[];
@@ -10,6 +22,67 @@ interface DashboardStatsProps {
   isSyncing: boolean;
 }
 
+const STATUS_BADGE: Record<PaymentStatus, { label: string; classes: string; dot: string }> = {
+  pending: {
+    label: 'Pendiente',
+    classes: 'bg-amber-50 text-amber-800 ring-amber-200',
+    dot: 'bg-amber-500',
+  },
+  verified: {
+    label: 'Verificado',
+    classes: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+    dot: 'bg-emerald-500',
+  },
+  rejected: {
+    label: 'Rechazado',
+    classes: 'bg-rose-50 text-rose-800 ring-rose-200',
+    dot: 'bg-rose-500',
+  },
+};
+
+const TONES = {
+  slate: { tile: 'bg-slate-100 text-slate-700', value: 'text-slate-900', bar: 'bg-slate-700' },
+  amber: { tile: 'bg-amber-50 text-amber-700', value: 'text-amber-700', bar: 'bg-amber-500' },
+  emerald: { tile: 'bg-emerald-50 text-emerald-700', value: 'text-emerald-700', bar: 'bg-emerald-500' },
+  brand: { tile: 'bg-brand-50 text-brand-700', value: 'text-slate-900', bar: 'bg-brand-600' },
+} as const;
+
+interface KpiCardProps {
+  label: string;
+  value: number | string;
+  caption: string;
+  icon: React.ElementType;
+  tone: keyof typeof TONES;
+  progress?: number;
+}
+
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, caption, icon: Icon, tone, progress }) => {
+  const t = TONES[tone];
+  return (
+    <div className="card flex flex-col p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold text-slate-600 sm:text-sm">{label}</p>
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${t.tile}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <p className={`mt-3 text-2xl font-bold tracking-tight sm:mt-4 sm:text-3xl ${t.value}`}>{value}</p>
+      <p className="mt-1 text-[11px] leading-snug text-slate-500 sm:text-xs">{caption}</p>
+      {progress !== undefined && (
+        <div
+          className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className={`h-full rounded-full transition-all ${t.bar}`} style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const DashboardStats: React.FC<DashboardStatsProps> = ({
   participants,
   stats,
@@ -17,166 +90,171 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   onSyncForms,
   isSyncing,
 }) => {
+  const { eventName, eventDate, eventTime, eventLocation } = INITIAL_EVENT_CONFIG;
+  const recent = participants.slice(0, 6);
+
   return (
-    <div className="space-y-6 bg-white">
-      {/* Main Sober Event Card */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white text-slate-700 text-xs font-semibold border border-slate-200">
-              <Calendar className="h-3.5 w-3.5 text-sky-700" />
-              <span>Fecha del taller: 5 de diciembre</span>
+    <div className="space-y-6">
+      {/* Cabecera del evento */}
+      <section className="overflow-hidden rounded-2xl bg-ink text-white">
+        <div className="relative p-6 sm:p-8">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-brand-700/30 blur-3xl" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
+                  <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                  {eventDate} · {eventTime}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                  {eventLocation}
+                </span>
+              </div>
+
+              <h2 className="text-xl font-bold leading-snug tracking-tight sm:text-2xl">{eventName}</h2>
+
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <a
+                  href={INITIAL_EVENT_CONFIG.googleFormUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 font-medium text-sky-300 underline-offset-4 hover:text-white hover:underline"
+                >
+                  Abrir Google Form
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+                <a
+                  href={INITIAL_EVENT_CONFIG.googleSlidesUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 font-medium text-slate-300 underline-offset-4 hover:text-white hover:underline"
+                >
+                  Abrir plantilla en Google Slides
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              </div>
             </div>
 
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-snug">
-              Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos
-            </h2>
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
-              <a
-                href="https://docs.google.com/forms/d/1nVkOvJnq8r4JGsOmVGwixvnt4hh4GLiqaKp4btEZqEc/edit"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-sky-700 hover:text-sky-900 underline font-medium"
-              >
-                Abrir Google Form Editable
-                <ExternalLink className="h-3 w-3" />
-              </a>
-              <a
-                href="https://docs.google.com/presentation/d/1mPZXn4DdJpc2VGzZSVoLT8CWd-h_ovpcqvL2RbGXmoY/edit?slide=id.p#slide=id.p"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-slate-700 hover:text-slate-900 underline font-medium"
-              >
-                Abrir Plantilla Editable en Google Slides
-                <ExternalLink className="h-3 w-3" />
-              </a>
+            <div className="flex flex-col gap-2.5 sm:flex-row lg:flex-col xl:flex-row">
+              <button onClick={() => onNavigateTab('verification')} className="btn-light">
+                <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+                Verificar pagos ({stats.pendingPayment})
+              </button>
+              <button onClick={() => onNavigateTab('scanner')} className="btn-brand">
+                <QrCode className="h-4 w-4" aria-hidden="true" />
+                Abrir lector QR
+              </button>
             </div>
           </div>
-
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
-            <button
-              onClick={() => onNavigateTab('verification')}
-              className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all text-center min-h-[40px]"
-            >
-              Verificar Pagos ({stats.pendingPayment})
-            </button>
-            <button
-              onClick={() => onNavigateTab('scanner')}
-              className="w-full sm:w-auto px-4 py-2.5 bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold rounded-lg transition-all text-center min-h-[40px]"
-            >
-              Lector QR
-            </button>
-          </div>
         </div>
-      </div>
+      </section>
 
-      {/* KPI Cards (Pure White) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-            <span>Registrados en Formulario</span>
-            <Users className="h-4 w-4 text-slate-400" />
-          </div>
-          <div className="mt-3 text-2xl font-bold text-slate-900">{stats.totalRegistered}</div>
-          <p className="mt-1 text-[11px] text-slate-500">Sincronizados con Firebase y Forms</p>
-        </div>
+      {/* Indicadores clave */}
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <KpiCard
+          label="Registrados"
+          value={stats.totalRegistered}
+          caption="Respuestas sincronizadas del formulario"
+          icon={Users}
+          tone="slate"
+        />
+        <KpiCard
+          label="Por verificar"
+          value={stats.pendingPayment}
+          caption="Pagos pendientes de revisión manual"
+          icon={Clock}
+          tone="amber"
+        />
+        <KpiCard
+          label="Verificados"
+          value={stats.verifiedPayment}
+          caption="Pase con QR creado y enviado por correo"
+          icon={CheckCircle2}
+          tone="emerald"
+        />
+        <KpiCard
+          label="Asistencia (QR)"
+          value={`${stats.checkedIn}`}
+          caption={`${stats.checkInPercentage}% de los verificados ya ingresó`}
+          icon={QrCode}
+          tone="brand"
+          progress={stats.checkInPercentage}
+        />
+      </section>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between text-xs text-amber-800 font-semibold">
-            <span>Pagos por Verificar</span>
-            <Clock className="h-4 w-4 text-amber-600" />
-          </div>
-          <div className="mt-3 text-2xl font-bold text-amber-700">{stats.pendingPayment}</div>
-          <p className="mt-1 text-[11px] text-slate-500">Pendientes de revisión manual</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between text-xs text-emerald-800 font-semibold">
-            <span>Verificados y Correo Enviado</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          </div>
-          <div className="mt-3 text-2xl font-bold text-emerald-700">{stats.verifiedPayment}</div>
-          <p className="mt-1 text-[11px] text-slate-500">Con entrada Google Slides + QR enviada</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between text-xs text-sky-800 font-semibold">
-            <span>Asistencia Confirmada (QR)</span>
-            <QrCode className="h-4 w-4 text-sky-700" />
-          </div>
-          <div className="mt-3 text-2xl font-bold text-slate-900">
-            {stats.checkedIn}{' '}
-            <span className="text-xs font-normal text-slate-500">({stats.checkInPercentage}%)</span>
-          </div>
-          <div className="mt-2.5 w-full bg-white h-2 rounded-full overflow-hidden border border-slate-200">
-            <div className="bg-sky-600 h-full rounded-full" style={{ width: `${stats.checkInPercentage}%` }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Sync Prompt when no participants yet */}
+      {/* Estado vacío o últimos registros */}
       {participants.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-3.5">
-          <RefreshCw className={`h-8 w-8 text-sky-700 mx-auto ${isSyncing ? 'animate-spin' : ''}`} />
-          <h3 className="text-base font-bold text-slate-900">
-            Base de datos lista y conectada a tu Google Form
-          </h3>
-          <p className="text-xs text-slate-600 max-w-lg mx-auto">
-            Haz clic en el botón de abajo para traer todas las respuestas reales registradas en tu documento editable de Google Forms.
-          </p>
-          <button
-            onClick={onSyncForms}
-            disabled={isSyncing}
-            className="px-5 py-2.5 bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold rounded-lg transition-all min-h-[40px] disabled:opacity-50"
-          >
-            {isSyncing ? 'Sincronizando respuestas...' : 'Sincronizar Respuestas de Google Forms'}
+        <section className="card flex flex-col items-center gap-4 p-10 text-center">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-700">
+            <RefreshCw className={`h-6 w-6 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+          </span>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-slate-900">Base de datos lista y conectada a tu Google Form</h3>
+            <p className="mx-auto max-w-md text-sm text-slate-600">
+              Sincroniza para traer las respuestas y comprobantes registrados en el formulario.
+            </p>
+          </div>
+          <button onClick={onSyncForms} disabled={isSyncing} className="btn-brand">
+            {isSyncing ? 'Sincronizando respuestas…' : 'Sincronizar respuestas de Google Forms'}
           </button>
-        </div>
+        </section>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Últimos Registros Sincronizados</h3>
+        <section className="card overflow-hidden">
+          <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Últimos registros</h3>
+              <p className="text-xs text-slate-500">Mostrando {recent.length} de {participants.length}</p>
+            </div>
             <button
               onClick={() => onNavigateTab('verification')}
-              className="text-xs font-semibold text-sky-700 hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800"
             >
-              Ir a Verificar Pagos →
+              Ir a verificar pagos
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </button>
-          </div>
-          <div className="divide-y divide-slate-200 text-xs">
-            {participants.slice(0, 5).map((p) => (
-              <div key={p.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold text-slate-900">{p.fullName}</div>
-                  <div className="text-slate-500">
-                    {p.email} {p.phone ? `• ${p.phone}` : ''} •{' '}
-                    <span className="font-mono text-slate-700">
-                      Comprobante: {p.paymentReference || 'Sin número'}
+          </header>
+
+          <ul className="divide-y divide-slate-100">
+            {recent.map((p) => {
+              const badge = STATUS_BADGE[p.paymentStatus];
+              const initials = p.fullName
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((w) => w.charAt(0).toUpperCase())
+                .join('');
+              return (
+                <li key={p.id} className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
+                      {initials || '?'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{p.fullName}</p>
+                      <p className="truncate text-xs text-slate-500">
+                        {p.email}
+                        {p.phone ? ` · ${p.phone}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pl-12 sm:pl-0">
+                    <span className="font-mono text-xs text-slate-600">
+                      Ref: {p.paymentReference || 'Sin número'}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${badge.classes}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} aria-hidden="true" />
+                      {badge.label}
                     </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {p.paymentStatus === 'pending' && (
-                    <span className="px-2.5 py-1 rounded border border-amber-300 bg-white text-amber-800 text-[11px] font-semibold">
-                      Pendiente de verificar
-                    </span>
-                  )}
-                  {p.paymentStatus === 'verified' && (
-                    <span className="px-2.5 py-1 rounded border border-emerald-300 bg-white text-emerald-800 text-[11px] font-semibold">
-                      Verificado y Enviado
-                    </span>
-                  )}
-                  {p.paymentStatus === 'rejected' && (
-                    <span className="px-2.5 py-1 rounded border border-rose-300 bg-white text-rose-800 text-[11px] font-semibold">
-                      Rechazado
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </div>
   );

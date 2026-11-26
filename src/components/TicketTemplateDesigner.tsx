@@ -156,225 +156,209 @@ export const TicketTemplateDesigner: React.FC<TicketTemplateDesignerProps> = ({
   const currentSample = getSampleOrSelectedParticipant();
 
   return (
-    <div className="space-y-6 bg-white">
-      {/* Header */}
-      <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 space-y-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Presentation className="h-6 w-6 text-sky-700 shrink-0" />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">
-                Plantilla Editable de Google Slides Conectada
-              </h2>
-              <p className="text-xs text-slate-600">
-                Por cada participante verificado se crea una nueva diapositiva dentro de este mismo
-                documento de Google Slides con sus datos (
-                <code className="font-mono font-bold text-slate-900">&lt;&lt;Nombre&gt;&gt;</code>,{' '}
-                <code className="font-mono font-bold text-slate-900">&lt;&lt;Correo&gt;&gt;</code>,{' '}
-                <code className="font-mono font-bold text-slate-900">&lt;&lt;ID&gt;&gt;</code> = 001,
-                002...) y su QR en el recuadro gris.
-              </p>
-            </div>
+    <div className="space-y-5">
+      {/* Cabecera */}
+      <section className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+        <div className="flex min-w-0 gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+            <Presentation className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold tracking-tight text-slate-900">Plantilla de Google Slides</h2>
+            <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
+              Por cada participante verificado se crea una diapositiva nueva en este documento con sus datos (
+              <code className="font-mono text-xs font-bold text-slate-900">{'<<Nombre>>'}</code>,{' '}
+              <code className="font-mono text-xs font-bold text-slate-900">{'<<Correo>>'}</code>,{' '}
+              <code className="font-mono text-xs font-bold text-slate-900">{'<<ID>>'}</code>) y su QR en el recuadro gris.
+            </p>
           </div>
-          <button
-            onClick={handleInspectTemplate}
-            disabled={inspectLoading || renderingAdapted}
-            className="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 min-h-[38px] self-start sm:self-auto disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${inspectLoading || renderingAdapted ? 'animate-spin' : ''}`}
-            />
-            {inspectLoading ? 'Sincronizando Slides...' : 'Recargar Plantilla de Slides'}
-          </button>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-slate-900">
-                {inspectData?.title
-                  ? `Documento conectado: ${inspectData.title}`
-                  : 'Enlace del Documento Editable de Google Slides'}
-              </h3>
-              <a
-                href={config.googleSlidesUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-sky-700 hover:underline font-semibold flex items-center gap-1"
-              >
-                Abrir presentación en Google Slides <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+        <button
+          onClick={handleInspectTemplate}
+          disabled={inspectLoading || renderingAdapted}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${inspectLoading || renderingAdapted ? 'animate-spin' : ''}`} />
+          {inspectLoading ? 'Sincronizando…' : 'Recargar plantilla'}
+        </button>
+      </section>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {/* Vista previa */}
+        <section className="card space-y-5 p-5 sm:p-6 lg:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-slate-900">
+              {inspectData?.title ? `Documento conectado: ${inspectData.title}` : 'Documento de Google Slides'}
+            </h3>
+            <a
+              href={config.googleSlidesUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+            >
+              Abrir en Google Slides <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={slidesUrl}
+              onChange={(e) => setSlidesUrl(e.target.value)}
+              aria-label="Enlace de la presentación"
+              className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            />
+            <button
+              onClick={handleInspectTemplate}
+              disabled={inspectLoading}
+              className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              Actualizar enlace
+            </button>
+          </div>
+
+          {inspectError && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-800">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+              <span>{inspectError}</span>
             </div>
+          )}
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <input
-                type="text"
-                value={slidesUrl}
-                onChange={(e) => setSlidesUrl(e.target.value)}
-                className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-600 min-h-[38px]"
-              />
+          {/* Selector de vista */}
+          <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="no-scrollbar inline-flex w-full gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:w-auto">
               <button
-                onClick={handleInspectTemplate}
-                disabled={inspectLoading}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition-all min-h-[38px]"
+                onClick={() => setPreviewMode('adapted')}
+                aria-pressed={previewMode === 'adapted'}
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                  previewMode === 'adapted' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                Actualizar Vínculo
+                <Sparkles className="h-3.5 w-3.5" />
+                Con datos y QR (ID {currentSample.sequentialId})
+              </button>
+              <button
+                onClick={() => setPreviewMode('master')}
+                aria-pressed={previewMode === 'master'}
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                  previewMode === 'master' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Plantilla base
               </button>
             </div>
 
-            {inspectError && (
-              <div className="p-3 bg-white border border-rose-300 rounded-lg text-xs text-rose-800 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                <span>{inspectError}</span>
-              </div>
+            {previewMode === 'adapted' && participants.length > 0 && (
+              <label className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-slate-600">Probar con</span>
+                <select
+                  value={selectedParticipantId}
+                  onChange={(e) => setSelectedParticipantId(e.target.value)}
+                  className="max-w-[260px] rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 focus:border-brand-600 focus:outline-none"
+                >
+                  {participants.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.fullName} ({p.email})
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
+          </div>
 
-            {/* Toggle between Master Slide and Live Adapted Slide */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
-              <div className="inline-flex rounded-lg border border-slate-200 p-1 bg-white">
-                <button
-                  onClick={() => setPreviewMode('adapted')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    previewMode === 'adapted'
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Así queda con Datos y QR (ID: {currentSample.sequentialId})
-                </button>
-                <button
-                  onClick={() => setPreviewMode('master')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    previewMode === 'master'
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Diapositiva 1 (Plantilla Base)
-                </button>
-              </div>
-
-              {previewMode === 'adapted' && participants.length > 0 && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-600 font-semibold">Probar con:</span>
-                  <select
-                    value={selectedParticipantId}
-                    onChange={(e) => setSelectedParticipantId(e.target.value)}
-                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-sky-600"
-                  >
-                    {participants.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.fullName} ({p.email})
-                      </option>
-                    ))}
-                  </select>
+          {/* Vista previa de la diapositiva */}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+            {previewMode === 'adapted' ? (
+              renderingAdapted && !adaptedSlideBase64 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-xs text-slate-600">
+                  <RefreshCw className="h-6 w-6 animate-spin text-brand-700" />
+                  <span>Rellenando nombre, correo, ID y QR en tu plantilla…</span>
                 </div>
-              )}
-            </div>
-
-            {/* Slide Preview Box */}
-            <div className="rounded-xl overflow-hidden border border-slate-200 bg-white p-3">
-              {previewMode === 'adapted' ? (
-                renderingAdapted && !adaptedSlideBase64 ? (
-                  <div className="py-16 flex flex-col items-center justify-center gap-2 text-xs text-slate-600">
-                    <RefreshCw className="h-6 w-6 animate-spin text-sky-700" />
-                    <span>
-                      Rellenando &lt;&lt;Nombre&gt;&gt;, &lt;&lt;Correo&gt;&gt;, &lt;&lt;ID&gt;&gt; y
-                      &lt;&lt;QR&gt;&gt; en tu plantilla de Google Slides...
-                    </span>
-                  </div>
-                ) : adaptedSlideBase64 ? (
-                  <div className="space-y-2">
-                    <img
-                      src={adaptedSlideBase64}
-                      alt="Diapositiva adaptada con participante y QR"
-                      className="w-full h-auto rounded-lg border border-slate-200"
-                    />
-                    <p className="text-[11px] text-emerald-800 font-medium text-center">
-                      Vista previa del pase generado: <strong>{currentSample.fullName}</strong> •{' '}
-                      <strong>{currentSample.email}</strong> •{' '}
-                      <strong>ID: {currentSample.sequentialId}</strong>
-                    </p>
-                  </div>
-                ) : null
-              ) : inspectData?.thumbnailBase64 ? (
-                <img
-                  src={inspectData.thumbnailBase64}
-                  alt="Plantilla original de Google Slides"
-                  className="w-full h-auto rounded-lg border border-slate-200"
-                />
-              ) : (
-                <div className="aspect-video w-full rounded-lg overflow-hidden border border-slate-200 bg-white">
-                  <iframe
-                    src="https://docs.google.com/presentation/d/1mPZXn4DdJpc2VGzZSVoLT8CWd-h_ovpcqvL2RbGXmoY/embed?start=false&loop=false&delayms=3000"
-                    title="Vista previa de Google Slides"
-                    className="w-full h-full border-0"
-                    allowFullScreen
+              ) : adaptedSlideBase64 ? (
+                <div className="space-y-2.5">
+                  <img
+                    src={adaptedSlideBase64}
+                    alt="Diapositiva adaptada con participante y QR"
+                    className="h-auto w-full rounded-lg border border-slate-200 bg-white"
                   />
+                  <p className="text-center text-[11px] text-slate-600">
+                    Vista previa: <strong className="text-slate-900">{currentSample.fullName}</strong> ·{' '}
+                    <strong className="text-slate-900">{currentSample.email}</strong> · ID{' '}
+                    <strong className="font-mono text-slate-900">{currentSample.sequentialId}</strong>
+                  </p>
                 </div>
-              )}
-            </div>
-
-            {/* Detected Elements inside the User's Google Slide */}
-            {inspectData && (
-              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2 text-xs">
-                <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  Campos detectados en la Diapositiva 1 de tu Google Slides:
-                </div>
-                {inspectData.detectedTexts.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {inspectData.detectedTexts.map((t, i) => (
-                      <span
-                        key={i}
-                        className="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] text-slate-800"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+              ) : null
+            ) : inspectData?.thumbnailBase64 ? (
+              <img
+                src={inspectData.thumbnailBase64}
+                alt="Plantilla original de Google Slides"
+                className="h-auto w-full rounded-lg border border-slate-200 bg-white"
+              />
+            ) : (
+              <div className="aspect-video w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <iframe
+                  src="https://docs.google.com/presentation/d/1mPZXn4DdJpc2VGzZSVoLT8CWd-h_ovpcqvL2RbGXmoY/embed?start=false&loop=false&delayms=3000"
+                  title="Vista previa de Google Slides"
+                  className="h-full w-full border-0"
+                  allowFullScreen
+                />
               </div>
             )}
           </div>
-        </div>
 
-        {/* Dynamic Placeholders Instructions */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Code2 className="h-4 w-4 text-sky-700" />
-            Cómo funciona la creación de cada diapositiva
-          </h3>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Al verificar el pago de un participante, la aplicación duplica la{' '}
-            <strong>Diapositiva 1</strong> dentro de este mismo documento de Google Slides, rellena
-            sus datos con el ID secuencial (<code>001</code>, <code>002</code>, <code>003</code>...)
-            y coloca su QR en el recuadro gris:
-          </p>
-
-          <div className="space-y-2.5">
-            {variables.map((v) => (
-              <div
-                key={v.tag}
-                onClick={() => handleCopy(v.tag)}
-                className="p-3.5 bg-white rounded-lg border border-slate-200 hover:border-sky-600 cursor-pointer transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-sky-900">{v.tag}</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold">
-                    {copiedVar === v.tag ? '¡Copiado!' : 'Activa en tu Slide'}
-                  </span>
+          {inspectData && (
+            <div className="space-y-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Campos detectados en la diapositiva 1
+              </p>
+              {inspectData.detectedTexts.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {inspectData.detectedTexts.map((t, i) => (
+                    <span key={i} className="rounded-md border border-slate-300 bg-white px-2.5 py-1 font-mono text-[11px] text-slate-800">
+                      {t}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-[11px] text-slate-600 mt-1">{v.desc}</p>
-              </div>
-            ))}
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Variables disponibles */}
+        <aside className="card space-y-4 p-5 sm:p-6">
+          <div className="space-y-1.5">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <Code2 className="h-4 w-4 text-brand-700" aria-hidden="true" />
+              Cómo se crea cada diapositiva
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Se duplica la <strong>diapositiva 1</strong>, se rellenan sus datos con el ID secuencial (001, 002…) y se
+              coloca el QR en el recuadro gris. Pulsa una variable para copiarla.
+            </p>
           </div>
-        </div>
+
+          <ul className="space-y-2">
+            {variables.map((v) => (
+              <li key={v.tag}>
+                <button
+                  onClick={() => handleCopy(v.tag)}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-colors hover:border-brand-600 hover:bg-brand-50/40"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-brand-800">{v.tag}</span>
+                    <span className="text-[11px] font-semibold text-emerald-700">
+                      {copiedVar === v.tag ? '¡Copiado!' : 'Copiar'}
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-relaxed text-slate-600">{v.desc}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
       </div>
     </div>
   );
