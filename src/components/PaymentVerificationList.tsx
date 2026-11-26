@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { Participant } from '../types';
 import { ensureAccessToken } from '../utils/googleAuth';
 import { extractSequentialId, getSequentialTicketId } from '../utils/qr';
@@ -268,7 +269,7 @@ export const PaymentVerificationList: React.FC<PaymentVerificationListProps> = (
         </div>
 
         {/* Segmentos de estado */}
-        <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
+        <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl bg-slate-900/[0.05] p-1">
           {FILTERS.map((f) => {
             const active = statusFilter === f.id;
             return (
@@ -276,13 +277,20 @@ export const PaymentVerificationList: React.FC<PaymentVerificationListProps> = (
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
                 aria-pressed={active}
-                className={`flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all ${
-                  active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                className={`relative flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
+                  active ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                {f.label}
+                {active && (
+                  <motion.span
+                    layoutId="filter-pill"
+                    transition={{ type: 'spring', stiffness: 520, damping: 42 }}
+                    className="absolute inset-0 rounded-xl bg-white shadow-sm shadow-slate-900/10"
+                  />
+                )}
+                <span className="relative">{f.label}</span>
                 <span
-                  className={`rounded-md px-1.5 text-xs font-bold tabular-nums ${
+                  className={`relative rounded-md px-1.5 text-xs font-bold tabular-nums ${
                     active ? 'bg-slate-900 text-white' : 'bg-white/70 text-slate-600'
                   }`}
                 >
@@ -387,8 +395,14 @@ export const PaymentVerificationList: React.FC<PaymentVerificationListProps> = (
         {filteredParticipants.length === 0 ? (
           <EmptyState />
         ) : (
-          filteredParticipants.map((p) => (
-            <article key={p.id} className="card space-y-4 p-4">
+          filteredParticipants.map((p, i) => (
+            <motion.article
+              key={p.id}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: Math.min(i, 8) * 0.05 }}
+              className="card space-y-4 p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h4 className="truncate text-sm font-bold text-slate-900">{p.fullName}</h4>
@@ -426,7 +440,7 @@ export const PaymentVerificationList: React.FC<PaymentVerificationListProps> = (
               </button>
 
               {renderActions(p, true)}
-            </article>
+            </motion.article>
           ))
         )}
       </div>
@@ -456,7 +470,7 @@ export const PaymentVerificationList: React.FC<PaymentVerificationListProps> = (
                 filteredParticipants.map((p) => {
                   const seqId = p.paymentStatus === 'verified' ? getSequentialTicketId(p, participants) : null;
                   return (
-                    <tr key={p.id} className="align-middle transition-colors hover:bg-slate-50/60">
+                    <tr key={p.id} className="align-middle transition-colors hover:bg-white/60">
                       <td className="px-5 py-4">
                         {seqId ? (
                           <span className="inline-block rounded-lg bg-slate-900 px-2.5 py-1 font-mono text-xs font-bold text-white">

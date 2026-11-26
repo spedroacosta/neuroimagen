@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import jsQR from 'jsqr';
 import { Participant } from '../types';
 import { parseQRPayload, getSequentialTicketId, extractSequentialId } from '../utils/qr';
@@ -310,13 +311,19 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
             </div>
           </div>
 
-          <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-slate-900">
+          <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-slate-900">
             <video ref={videoRef} className={`h-full w-full object-cover ${cameraState === 'active' ? 'block' : 'hidden'}`} />
             <canvas ref={canvasRef} className="hidden" />
 
             {cameraState === 'active' && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="relative h-56 w-56 sm:h-64 sm:w-64">
+                  {/* Línea de escaneo animada */}
+                  <motion.span
+                    className="absolute inset-x-2 h-0.5 rounded-full bg-gradient-to-r from-transparent via-sky-300 to-transparent shadow-[0_0_14px_rgba(56,189,248,0.9)]"
+                    animate={{ top: ['6%', '94%', '6%'] }}
+                    transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                  />
                   {/* Esquinas del visor */}
                   <span className="absolute left-0 top-0 h-8 w-8 rounded-tl-xl border-l-4 border-t-4 border-white" />
                   <span className="absolute right-0 top-0 h-8 w-8 rounded-tr-xl border-r-4 border-t-4 border-white" />
@@ -390,7 +397,7 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
 
             {scanResultNotice ? (
               <div
-                className={`space-y-3 rounded-xl border p-5 text-center ${
+                className={`enter space-y-3 rounded-2xl border p-5 text-center ${
                   scanResultNotice.type === 'success'
                     ? 'border-emerald-200 bg-emerald-50'
                     : 'border-rose-200 bg-rose-50'
@@ -444,7 +451,7 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
                   const seqId = getSequentialTicketId(p, participants);
                   const isRemoving = removingCheckInId === p.id;
                   return (
-                    <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <li key={p.id} className="enter flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="rounded-md bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white">

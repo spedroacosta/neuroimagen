@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { Participant, EventConfig } from '../types';
 import {
   generateQRCodeDataUrl,
@@ -197,8 +198,17 @@ export const TicketModal: React.FC<TicketModalProps> = ({
   const payloadValue = buildParticipantQRPayload(sequentialId, participant.email);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 backdrop-blur-sm sm:items-center sm:p-4"
+    >
+      <motion.div
+        initial={{ y: 60, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+        className="glass flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[28px] sm:rounded-[28px]"
+      >
         {/* Cabecera */}
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -397,7 +407,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({
             </button>
           </div>
         </footer>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

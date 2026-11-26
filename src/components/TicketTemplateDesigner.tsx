@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { EventConfig, Participant } from '../types';
 import { getAccessToken } from '../utils/googleAuth';
 import {
@@ -227,26 +228,36 @@ export const TicketTemplateDesigner: React.FC<TicketTemplateDesignerProps> = ({
 
           {/* Selector de vista */}
           <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="no-scrollbar inline-flex w-full gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:w-auto">
+            <div className="no-scrollbar inline-flex w-full gap-1 overflow-x-auto rounded-2xl bg-slate-900/[0.05] p-1 sm:w-auto">
               <button
                 onClick={() => setPreviewMode('adapted')}
                 aria-pressed={previewMode === 'adapted'}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
-                  previewMode === 'adapted' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors ${
+                  previewMode === 'adapted' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
+                {previewMode === 'adapted' && (
+                  <motion.span layoutId="tpl-pill" transition={{ type: 'spring', stiffness: 520, damping: 42 }} className="absolute inset-0 rounded-xl bg-white shadow-sm shadow-slate-900/10" />
+                )}
+                <span className="relative flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" />
                 Con datos y QR (ID {currentSample.sequentialId})
+                </span>
               </button>
               <button
                 onClick={() => setPreviewMode('master')}
                 aria-pressed={previewMode === 'master'}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
-                  previewMode === 'master' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors ${
+                  previewMode === 'master' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
+                {previewMode === 'master' && (
+                  <motion.span layoutId="tpl-pill" transition={{ type: 'spring', stiffness: 520, damping: 42 }} className="absolute inset-0 rounded-xl bg-white shadow-sm shadow-slate-900/10" />
+                )}
+                <span className="relative flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5" />
                 Plantilla base
+                </span>
               </button>
             </div>
 
@@ -341,8 +352,8 @@ export const TicketTemplateDesigner: React.FC<TicketTemplateDesignerProps> = ({
           </div>
 
           <ul className="space-y-2">
-            {variables.map((v) => (
-              <li key={v.tag}>
+            {variables.map((v, i) => (
+              <li key={v.tag} className="enter" style={{ animationDelay: `${i * 70}ms` }}>
                 <button
                   onClick={() => handleCopy(v.tag)}
                   className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-colors hover:border-brand-600 hover:bg-brand-50/40"

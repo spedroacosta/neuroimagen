@@ -57,7 +57,7 @@ export const IntegrationGuide: React.FC = () => (
       {STEPS.map((step, i) => {
         const Icon = step.icon;
         return (
-          <li key={step.title} className="card flex flex-col gap-4 p-5">
+          <li key={step.title} className="enter card flex flex-col gap-4 p-5" style={{ animationDelay: `${i * 100}ms` }}>
             <div className="flex items-center gap-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
                 <Icon className="h-4 w-4" aria-hidden="true" />
