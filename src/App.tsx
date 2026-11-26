@@ -45,7 +45,8 @@ import { TicketTemplateDesigner } from './components/TicketTemplateDesigner';
 import { TicketModal } from './components/TicketModal';
 import { QRScannerView } from './components/QRScannerView';
 import { IntegrationGuide } from './components/IntegrationGuide';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, RefreshCw, X } from 'lucide-react';
+import { LoginScreen } from './components/LoginScreen';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'template' | 'scanner' | 'guide'>('dashboard');
@@ -488,7 +489,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -501,55 +502,42 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-white space-y-6">
-        {/* Global Status Notice */}
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {/* Aviso global */}
         {bannerNotice && (
           <div
-            className={`p-4 rounded-xl border text-xs font-semibold flex items-center justify-between gap-3 bg-white ${
+            role="status"
+            className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
               bannerNotice.type === 'success'
-                ? 'border-emerald-300 text-emerald-900'
-                : 'border-rose-300 text-rose-900'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                : 'border-rose-200 bg-rose-50 text-rose-900'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2.5">
               {bannerNotice.type === 'success' ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
               ) : (
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
               )}
-              <span>{bannerNotice.text}</span>
+              <span className="leading-relaxed">{bannerNotice.text}</span>
             </div>
             <button
               onClick={() => setBannerNotice(null)}
-              className="text-slate-400 hover:text-slate-700 font-bold"
+              aria-label="Cerrar aviso"
+              className="rounded-md p-1 opacity-60 transition-opacity hover:opacity-100"
             >
-              ✕
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
-        {/* Require Google Sign-in if not authenticated */}
-        {authReady && !user ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-4 max-w-xl mx-auto my-8">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos
-            </h2>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Inicia sesión con tu cuenta de Google para acceder a la base de datos en tiempo real, sincronizar las respuestas y comprobantes de tu Google Form, editar automáticamente la plantilla de Google Slides y enviar los pases con QR por Gmail.
-            </p>
-            <button
-              onClick={handleLogin}
-              className="inline-flex items-center gap-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs px-5 py-3 rounded-xl border border-slate-300 shadow-xs transition-all"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-              </svg>
-              <span>Iniciar sesión con Google</span>
-            </button>
+        {!authReady ? (
+          <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500">
+            <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <span>Cargando sesión…</span>
           </div>
+        ) : !user ? (
+          <LoginScreen onLogin={handleLogin} />
         ) : (
           <>
             {activeTab === 'dashboard' && (
@@ -598,12 +586,12 @@ export default function App() {
         )}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-5 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            <strong>Taller de Neuroimagen, el arte de diagnosticar a tiempo - Promoción 106 de Médicos Cirujanos</strong>
-          </div>
-          <div>5 de diciembre</div>
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8">
+          <p className="font-semibold text-slate-700">
+            Taller de Neuroimagen · Promoción 106 de Médicos Cirujanos
+          </p>
+          <p>5 de diciembre</p>
         </div>
       </footer>
 
